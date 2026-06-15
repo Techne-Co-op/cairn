@@ -1,0 +1,27 @@
+# Proves the migration chain replays cleanly from zero (with seed) on every PR.
+# This is the floor; the pgTAP invariant + RLS + redaction tests described in the
+# implementation spec are the next addition under supabase/tests/.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local stack
+        run: supabase start
+      - name: Replay migrations + seed from zero
+        run: supabase db reset
+      - name: Health + zero-sum self-check
+        run: |
+          curl -s "http://127.0.0.1:54321/rest/v1/rpc/rpc_health" \
+            -H "apikey: $(supabase status --output json | python3 -c 'import sys,json;print(json.load(sys.stdin)["ANON_KEY"])')" \
+            -H "Content-Type: application/json" -d '{}' | tee /tmp/health.json
+          grep -q '"zero_sum":true' /tmp/health.json

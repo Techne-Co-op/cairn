@@ -1,0 +1,17 @@
+Cairn community data
+Copyright (C) 2026 Techne (RegenHub LCA) and the Cairn community
+
+SPDX-License-Identifier: ODbL-1.0
+
+The data a Cairn commons produces (the waymarks, trails, stones, and the public
+record of collective judgment) is intended to be shared under the Open Database
+License (ODbL) v1.0, so the map the community builds together stays held in
+common and any redistribution remains open.
+
+STATUS: PROPOSED and not yet ratified. Before first public release, replace this
+file with the full, canonical license text, available at:
+
+    https://opendatacommons.org/licenses/odbl/1-0/
+
+Note: code and data carry different licenses on purpose. The software is
+AGPL-3.0-or-later (see LICENSE); the data the commons generates is ODbL.

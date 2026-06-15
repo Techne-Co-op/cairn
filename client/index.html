@@ -1,0 +1,926 @@
+<!doctype html>
+<!--
+  ============================================================================
+  CAIRN · MVP CLIENT  ·  index.html
+  Way-finding for the open web. A commons where peers leave waymarks and the
+  map of what is worth attention draws itself from the many who walked before.
+
+  WHAT THIS FILE IS
+  -----------------
+  The GitHub Pages "primary interface": a single, self-contained, dependency-free
+  (in demo) static client. It is the production index.html and, at the same time,
+  an immediately explorable demo. It builds on the Way-finding document's metaphor
+  system (waymarks, trails, the self-drawing map, height / rising / consensus /
+  safe-trails) and realizes it as a working interface.
+
+  ARCHITECTURE (ports & adapters / dependency inversion)
+  ------------------------------------------------------
+  The UI never talks to a database directly. It talks to a CairnStore interface
+  (the "port"). Two adapters implement that port:
+
+    • LocalStore     in-memory, seeded. Runs with zero external dependencies, so
+                     this file is fully usable the instant it loads. It is also a
+                     faithful REFERENCE implementation of the server's rules:
+                     the event-sourced stone ledger, the flag status-fold, the
+                     safe-trails redaction, the self-drawing tag field.
+
+    • SupabaseStore  the production path. Calls the exact rpc_* verbs and reads
+                     the `feed` view defined in the MVP implementation spec.
+                     Activated automatically when a real config is present.
+
+  The factory createStore() picks the adapter from config and exposes store.mode
+  ("demo" | "live") so the UI can label its own honesty. This is the design
+  system's "no surface lies" ethic made literal: in demo, a `simulated` chip is
+  shown; with a backend configured, it flips to `operational`.
+
+  HOW IT MAPS TO THE REPO  (github.com/Techne-Co-op/cairn)
+  --------------------------------------------------------
+  For deployment this single file is enough. For a multi-file repo it splits as:
+      client/index.html            ← markup + styles (this <head>/<body>)
+      client/store/store.js         ← the CairnStore interface contract
+      client/store/local.js         ← LocalStore (this demo adapter)
+      client/store/supabase.js      ← SupabaseStore (this production adapter)
+      client/app.js                 ← the view/controller
+      client/config/config.js         ← sets window.CAIRN_CONFIG (committed; the
+                                       anon key + url are publishable by design)
+  The Supabase BACKEND (migrations, rpc verbs, RLS, the feed view, CI) is already
+  specified in cairn-mvp-implementation-spec-v0.1.md and is generated separately;
+  this client is the interface layer that sits on top of it.
+
+  CONSTRAINTS HONORED (from the spec's anti-patterns)
+  ---------------------------------------------------
+    • Balances and stone counts are FOLDS over an append-only event log, never
+      stored as primary columns. (See LocalStore.)
+    • The ledger is append-only; a "reclaim" is a new reversing event, never an
+      edit or delete.
+    • Self-dealing is structurally impossible (you cannot signal your own place).
+    • In production, safe-trails redaction is enforced by the `feed` view at the
+      database edge; the client veil is cosmetic. (Commented at the seam.)
+    • No build framework, no bundler, no localStorage. Vanilla JS; supabase-js is
+      imported lazily only on the production path.
+  ============================================================================
+-->
+<html lang="en" data-mode="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0f0f0f">
+<title>Cairn · way-finding for the open web</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  /* Set initial color mode from the device preference, before paint, to avoid a flash. */
+  (function(){try{ if (window.matchMedia('(prefers-color-scheme: light)').matches)
+    document.documentElement.setAttribute('data-mode','light'); }catch(e){}})();
+</script>
+<style>
+/* ============================================================================
+   co-op.us DESIGN SYSTEM · tarn sibling accent (Cairn)
+   Dark-first, manual toggle + system preference, 400ms crossfade.
+   All instrument color is dot+word, never color alone.
+   ============================================================================ */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface-raised:#232220;
+  --border:#333333; --border-strong:#4a4a4a;
+  --tarn:#6fb0a8; --tarn-text:#6fb0a8;
+  --tarn-dim:rgba(111,176,168,.12); --tarn-glow:rgba(111,176,168,.06);
+  --heading:#e8e0d8; --text:#d4d4d4; --muted:#999999; --faint:#666666;
+  --ok:#94ae84; --ok-dim:rgba(148,174,132,.14);
+  --info:#8da3b5; --info-dim:rgba(141,163,181,.14);
+  --warn:#c0705c; --warn-dim:rgba(192,112,92,.14);
+  --dur-mode:400ms; --dur-micro:150ms; --ease:cubic-bezier(.4,0,.2,1);
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;
+  --serif:'Libre Baskerville',Georgia,serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --radius:12px;
+}
+[data-mode="light"]{
+  color-scheme:light;
+  --bg:#faf8f5; --surface:#ffffff; --surface-raised:#fbf9f6;
+  --border:#e2ddd5; --border-strong:#c9c2b8;
+  --tarn:#6fb0a8; --tarn-text:#3f7a72;
+  --tarn-dim:rgba(111,176,168,.16); --tarn-glow:rgba(111,176,168,.10);
+  --heading:#2a2520; --text:#3d3833; --muted:#6e675f; --faint:#a39b90;
+  --ok:#5f7a52; --ok-dim:rgba(95,122,82,.12);
+  --info:#5b7286; --info-dim:rgba(91,114,134,.12);
+  --warn:#9e4f3d; --warn-dim:rgba(158,79,61,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--serif);font-size:15px;line-height:1.6;color:var(--text);background:var(--bg);
+  -webkit-font-smoothing:antialiased;overflow:hidden;
+  transition:background-color var(--dur-mode) var(--ease),color var(--dur-mode) var(--ease)}
+a{color:var(--tarn-text);text-decoration:none}
+em{color:var(--heading);font-style:italic}
+button{font-family:inherit;color:inherit;cursor:pointer;background:none;border:none}
+::selection{background:var(--tarn-dim)}
+:focus-visible{outline:2px solid var(--tarn);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:0ms!important;animation:none!important}}
+.mono{font-family:var(--mono)}
+
+/* ---- chips (honest status grammar) ---- */
+.chip{font-family:var(--mono);font-size:10px;letter-spacing:.05em;display:inline-flex;align-items:center;gap:6px;
+  padding:3px 9px;border-radius:999px;white-space:nowrap}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.chip.sim{color:var(--info);background:var(--info-dim)}
+.chip.ok{color:var(--ok);background:var(--ok-dim)}
+.chip.warn{color:var(--warn);background:var(--warn-dim)}
+.chip.plain{color:var(--muted);background:var(--surface);border:1px solid var(--border)}
+
+/* ============================================================================
+   APP SHELL · a no-scroll HUD: slim header + three-column instrument.
+   Panels scroll internally; the page does not.
+   ============================================================================ */
+.app{display:flex;flex-direction:column;height:100%}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
+  padding:10px var(--s5);border-bottom:1px solid var(--border);flex:none;
+  background:var(--bg);transition:background-color var(--dur-mode) var(--ease),border-color var(--dur-mode) var(--ease)}
+.brand{display:flex;align-items:center;gap:9px;min-width:0}
+.brand svg{width:22px;height:22px;color:var(--tarn);stroke-width:1.5;fill:none;stroke:currentColor;flex:none}
+.brand b{font-family:var(--serif);font-weight:700;font-size:17px;color:var(--heading);letter-spacing:-.01em}
+.brand .tag{font-style:italic;color:var(--muted);font-size:12.5px;white-space:nowrap}
+@media (max-width:720px){.brand .tag{display:none}}
+.bar-actions{display:flex;align-items:center;gap:var(--s2);flex:none}
+.pill{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 11px;border:1px solid var(--border);
+  border-radius:999px;background:var(--surface);font-family:var(--mono);font-size:11px;color:var(--muted);
+  transition:border-color var(--dur-micro) var(--ease),background-color var(--dur-mode) var(--ease)}
+.pill:hover{border-color:var(--border-strong)}
+.pill svg{width:14px;height:14px;stroke:var(--tarn-text);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.pill b{color:var(--heading);font-weight:500}
+.pill.toggle[aria-pressed="true"]{border-color:var(--tarn);background:var(--tarn-dim);color:var(--tarn-text)}
+@media (max-width:560px){.pill .lbl{display:none}}
+
+/* the slim way-finding entry line under the bar */
+.entry{padding:10px var(--s5);border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:10px;flex:none;flex-wrap:wrap}
+.entry h1{font-family:var(--serif);font-weight:700;font-size:16px;color:var(--heading);letter-spacing:-.01em}
+.entry span{font-style:italic;color:var(--muted);font-size:13px}
+
+/* three-column HUD */
+.hud{flex:1;display:grid;grid-template-columns:248px 1fr 340px;min-height:0}
+.rail{border-right:1px solid var(--border);min-height:0;overflow-y:auto;padding:var(--s4)}
+.rail.right{border-right:none;border-left:1px solid var(--border)}
+.center{min-height:0;overflow-y:auto;padding:var(--s4) var(--s5)}
+.rail::-webkit-scrollbar,.center::-webkit-scrollbar{width:8px}
+.rail::-webkit-scrollbar-thumb,.center::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+
+.rail-h{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--tarn-text);
+  margin:var(--s2) 0 var(--s3);display:flex;align-items:center;gap:7px}
+.rail-h:not(:first-child){margin-top:var(--s5)}
+
+/* trails (tags) list */
+.trail{width:100%;display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:9px;text-align:left;
+  border:1px solid transparent;transition:background-color var(--dur-micro),border-color var(--dur-micro)}
+.trail:hover{background:var(--surface)}
+.trail[aria-pressed="true"]{background:var(--tarn-dim);border-color:var(--tarn)}
+.trail .nm{font-family:var(--mono);font-size:12px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trail[aria-pressed="true"] .nm{color:var(--tarn-text)}
+.trail .ct{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.heat{height:3px;border-radius:2px;background:var(--tarn);opacity:.5;flex:none}
+.rising{color:var(--ok)}
+
+/* rising-now mini list */
+.rise-item{display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:12.5px;color:var(--muted)}
+.rise-item .mono{font-size:11px;color:var(--tarn-text)}
+
+/* ---- center: the map of waymarks ---- */
+.maptools{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s4);flex-wrap:wrap}
+.filternote{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.filternote b{color:var(--tarn-text);font-weight:500}
+.btn{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 14px;border-radius:999px;
+  font-family:var(--mono);font-size:12px;border:1px solid var(--tarn);background:var(--tarn-dim);color:var(--tarn-text);
+  transition:background-color var(--dur-micro)}
+.btn:hover{background:color-mix(in srgb,var(--tarn-dim) 60%, var(--tarn) 18%)}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.btn.ghost{border-color:var(--border);background:transparent;color:var(--muted)}
+.btn.ghost:hover{border-color:var(--border-strong);background:var(--surface)}
+
+/* a waymark card */
+.mark{display:grid;grid-template-columns:46px 1fr;gap:14px;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);padding:var(--s4);margin-bottom:var(--s3);cursor:pointer;
+  transition:border-color var(--dur-micro),background-color var(--dur-mode),transform var(--dur-micro)}
+.mark:hover{border-color:var(--border-strong)}
+.mark[aria-selected="true"]{border-color:var(--tarn)}
+.mark.veiled{border-style:dashed}
+/* the stone-stack glyph; height drawn from stone count */
+.stack{display:flex;flex-direction:column-reverse;align-items:center;justify-content:flex-start;gap:2px;padding-top:4px}
+.stack i{display:block;height:5px;border-radius:3px;background:var(--tarn);opacity:.9}
+.stack .h{font-family:var(--mono);font-size:13px;color:var(--tarn-text);margin-bottom:3px}
+.mark .body{min-width:0}
+.mark .ttl{font-family:var(--serif);font-weight:700;font-size:15.5px;color:var(--heading);line-height:1.35;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.mark .meta{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin:4px 0 8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.mark .trails{display:flex;gap:6px;flex-wrap:wrap}
+.ttag{font-family:var(--mono);font-size:10.5px;color:var(--tarn-text);background:var(--tarn-dim);padding:2px 8px;border-radius:999px}
+.ttag.dis{color:var(--warn);background:var(--warn-dim)}
+.redacted{color:var(--muted);font-style:italic}
+
+/* ---- right rail: the reading (nested detail) ---- */
+.detail-empty{color:var(--faint);font-size:13px;line-height:1.7;padding:var(--s4) 2px}
+.detail-empty .mono{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--tarn-text);margin-bottom:var(--s3)}
+.dt-ttl{font-family:var(--serif);font-weight:700;font-size:17px;color:var(--heading);line-height:1.32;margin-bottom:6px}
+.dt-meta{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-bottom:var(--s4);word-break:break-all}
+.dt-h{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--tarn-text);
+  margin:var(--s5) 0 var(--s3);display:flex;align-items:center;justify-content:space-between}
+/* a weighted reading row in the self-drawing map */
+.reading{margin-bottom:var(--s3)}
+.reading .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
+.reading .nm{font-family:var(--mono);font-size:12px;color:var(--tarn-text)}
+.reading.dis .nm{color:var(--warn)}
+.reading .w{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.bar{height:6px;border-radius:3px;background:var(--surface-raised);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--tarn);border-radius:3px;transition:width var(--dur-mode) var(--ease)}
+.reading.dis .bar i{background:var(--warn)}
+.affirm{font-family:var(--mono);font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:999px;
+  padding:2px 8px;transition:border-color var(--dur-micro)}
+.affirm:hover{border-color:var(--tarn);color:var(--tarn-text)}
+
+.dt-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:var(--s3)}
+.act{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 13px;border-radius:10px;flex:1;justify-content:center;
+  font-family:var(--mono);font-size:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);
+  transition:border-color var(--dur-micro),background-color var(--dur-micro)}
+.act:hover{border-color:var(--border-strong)}
+.act.primary{border-color:var(--tarn);background:var(--tarn-dim);color:var(--tarn-text)}
+.act.on{border-color:var(--tarn);background:var(--tarn-dim);color:var(--tarn-text)}
+.act svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.act:disabled{opacity:.45;cursor:not-allowed}
+.act-note{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:8px;line-height:1.6}
+
+/* inline tag input */
+.layrow{display:flex;gap:8px;margin-top:var(--s3)}
+.layrow input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:9px;
+  padding:9px 11px;font-family:var(--mono);font-size:12px;color:var(--text)}
+.layrow input:focus{outline:none;border-color:var(--tarn)}
+
+/* flag menu */
+.flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:var(--s3)}
+.flagb{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--border);border-radius:999px;
+  padding:4px 10px;transition:border-color var(--dur-micro)}
+.flagb:hover{border-color:var(--warn);color:var(--warn)}
+.flagb[aria-pressed="true"]{border-color:var(--warn);background:var(--warn-dim);color:var(--warn)}
+
+/* ---- modal (leave a waymark) ---- */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:var(--s4);z-index:50}
+.scrim.open{display:flex}
+.modal{width:min(460px,100%);background:var(--bg);border:1px solid var(--border-strong);border-radius:16px;padding:var(--s5);
+  box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.modal h3{font-family:var(--serif);font-weight:700;font-size:19px;color:var(--heading);margin-bottom:4px}
+.modal .hint{font-size:13px;color:var(--muted);margin-bottom:var(--s4)}
+.field{margin-bottom:var(--s3)}
+.field label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+.field input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 12px;
+  font-family:var(--mono);font-size:13px;color:var(--text)}
+.field input:focus{outline:none;border-color:var(--tarn)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:var(--s4)}
+
+/* ---- toast ---- */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;
+  background:var(--surface-raised);border:1px solid var(--border-strong);border-radius:10px;padding:10px 16px;
+  font-family:var(--mono);font-size:11.5px;color:var(--text);z-index:60;transition:opacity var(--dur-micro),transform var(--dur-micro);max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.warn{border-color:var(--warn);color:var(--warn)}
+
+/* ============================================================================
+   RESPONSIVE · collapse the three-column HUD on narrow screens.
+   Trails become a horizontal strip; the detail becomes a bottom sheet.
+   ============================================================================ */
+@media (max-width:980px){
+  .hud{grid-template-columns:1fr}
+  .rail.left{display:none}              /* trails available via the filter note + map */
+  .rail.right{position:fixed;inset:auto 0 0 0;max-height:78vh;border-left:none;border-top:1px solid var(--border-strong);
+    background:var(--bg);border-radius:18px 18px 0 0;transform:translateY(102%);transition:transform var(--dur-mode) var(--ease);z-index:40;padding:var(--s5)}
+  .rail.right.open{transform:translateY(0)}
+  .sheet-close{display:flex}
+}
+.sheet-close{display:none;width:100%;justify-content:center;margin-bottom:var(--s3)}
+.sheet-grip{width:38px;height:4px;border-radius:2px;background:var(--border-strong)}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <ellipse cx="12" cy="18.6" rx="7.4" ry="2.5"/><ellipse cx="12" cy="13.6" rx="5.3" ry="2.1"/>
+        <ellipse cx="12" cy="9.2" rx="3.7" ry="1.8"/><ellipse cx="12" cy="5.6" rx="2.2" ry="1.3"/>
+      </svg>
+      <b>Cairn</b>
+      <span class="tag">way-finding for the open web</span>
+    </div>
+    <div class="bar-actions">
+      <!-- honest mode chip: flips demo ↔ live from the active store adapter -->
+      <span class="chip sim" id="modeChip"><span class="dot"></span><span id="modeChipText">demo · seeded</span></span>
+      <!-- your attention balance (a fold over the ledger) -->
+      <span class="pill" title="Your stones: a fold over the shared ledger, never a stored balance">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="17" rx="7" ry="2.4"/><ellipse cx="12" cy="12.5" rx="5" ry="2"/><ellipse cx="12" cy="8.5" rx="3.4" ry="1.7"/></svg>
+        <span class="lbl">stones</span> <b id="balance">0</b>
+      </span>
+      <!-- safe-trails: server-enforced in prod (the feed view); cosmetic in demo -->
+      <button class="pill toggle" id="safeToggle" aria-pressed="true" title="Safe trails: sensitive ground is covered for younger walkers">
+        <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 7.9-7 9-4-1.1-7-4.4-7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span class="lbl">safe trails</span>
+      </button>
+      <button class="pill" id="modeToggle" aria-label="Toggle color mode">
+        <svg viewBox="0 0 24 24"><use id="modeIconUse" href="#i-moon"/></svg>
+        <span id="modeLabel" class="lbl">dark</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== SLIM WAY-FINDING ENTRY ===== -->
+  <div class="entry">
+    <h1>Find your way by the marks others left.</h1>
+    <span>Each waymark is a peer's judgment; the map is the sum of who walked.</span>
+  </div>
+
+  <!-- ===== THE HUD ===== -->
+  <div class="hud">
+
+    <!-- LEFT RAIL · trails (tags) and what is rising -->
+    <aside class="rail left" aria-label="Trails and rising">
+      <div class="rail-h">Trails</div>
+      <div id="trails"><!-- rendered --></div>
+      <div class="rail-h">Rising now</div>
+      <div id="rising"><!-- rendered --></div>
+    </aside>
+
+    <!-- CENTER · the map of waymarks -->
+    <main class="center" aria-label="The map">
+      <div class="maptools">
+        <div class="filternote" id="filterNote">all trails</div>
+        <button class="btn" id="leaveBtn">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Leave a waymark
+        </button>
+      </div>
+      <div id="map"><!-- waymark cards rendered --></div>
+    </main>
+
+    <!-- RIGHT RAIL · the reading (nested detail) -->
+    <aside class="rail right" id="detail" aria-label="The reading">
+      <button class="sheet-close" id="sheetClose" aria-label="Close"><span class="sheet-grip"></span></button>
+      <div class="detail-empty" id="detailEmpty">
+        <span class="mono">The reading</span>
+        Select a waymark to read its place: the weighted field of how peers
+        understand it, where they agree, and where they argue. Nothing here is a
+        hidden score; every mark is a fact about what peers did.
+      </div>
+      <div id="detailBody" style="display:none"><!-- rendered --></div>
+    </aside>
+  </div>
+</div>
+
+<!-- ===== MODAL · leave a waymark ===== -->
+<div class="scrim" id="scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle">Leave a waymark</h3>
+    <p class="hint">Mark a place you found worth the trip, and lay a first trail on it. Others who agree will add their stones.</p>
+    <div class="field"><label for="fUrl">the link</label><input id="fUrl" type="url" placeholder="https://…" autocomplete="off"></div>
+    <div class="field"><label for="fTitle">what is it (optional)</label><input id="fTitle" type="text" placeholder="a short title" autocomplete="off"></div>
+    <div class="field"><label for="fTag">a first trail</label><input id="fTag" type="text" placeholder="tech-leak" autocomplete="off"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="cancelBtn">Cancel</button>
+      <button class="btn" id="placeBtn">Place it</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></symbol>
+</defs></svg>
+
+<!-- optional: created from config/config.example.js. If absent, the app runs the seeded demo. -->
+<script src="config/config.js" onerror="void 0"></script>
+<script type="module">
+/* ============================================================================
+   1 · THE PORT  ·  CairnStore interface (contract)
+   ----------------------------------------------------------------------------
+   Both adapters below implement exactly these methods. The UI depends only on
+   this shape, never on a concrete backend. Documented as a contract:
+
+     await store.init()                         → ready; resolves session/peer
+     store.mode                                 → "demo" | "live"
+     await store.getFeed({ tags })              → [place]   (redaction applied)
+     await store.getTrails()                    → [{tag, count, rising}]
+     await store.getRising()                    → [{tag, score}]
+     await store.getBalance()                   → number    (fold over ledger)
+     await store.getReadings(placeId)           → [{tag, weight, disputed, mine}]
+     await store.leaveWaymark({url,title,tag})  → placeId
+     await store.addStone(placeId)              → {ok} | throws CAIRN_*
+     await store.reclaim(placeId)               → {ok}
+     await store.layTag(placeId, tag)           → {ok}
+     await store.flag(placeId, kind)            → {ok}
+     store.setReaderSafe(bool)                  → void       (UI redraws)
+
+   A `place` is: { id, url, title, domain, status, stones, breadth, rising,
+                   tags:[string], sharedByMe:bool, signaledByMe:bool, redacted:bool }
+   ============================================================================ */
+
+/* ============================================================================
+   2 · ADAPTER A  ·  LocalStore  (in-memory, seeded)
+   ----------------------------------------------------------------------------
+   Runs with no backend so this file is usable immediately. It is also a FАITHFUL
+   reference of the server rules: an append-only event ledger, balances as folds,
+   the flag status-fold, safe-trails redaction, and the weighted tag field.
+   Nothing is persisted (no localStorage); a refresh returns to seed. That is
+   honest for a demo and is labeled as such by the `simulated` chip.
+   ============================================================================ */
+class LocalStore {
+  constructor(){
+    this.mode = "demo";
+    this.me = "you";
+    this.readerSafe = true;
+
+    /* --- seeded peers. "you" plus a few others so transfers are real and the
+           ledger is genuinely zero-sum across the network. --- */
+    this.peers = ["you","rill","fen","morrow","slate"];
+
+    /* --- seeded places (links in the terrain). status is DERIVED from flags,
+           never set here except the initial 'open'. --- */
+    this.places = [
+      mk(1,"https://example.org/apple-supply-leak","Internal slides point to a delayed sensor line","example.org","you"),
+      mk(2,"https://journal.example/peer-review-crisis","The replication problem has a measurement root","journal.example","rill"),
+      mk(3,"https://news.example/city-budget-open-data","City publishes its budget as queryable open data","news.example","fen"),
+      mk(4,"https://blog.example/forever-stamp-economics","Why a stamp holds value when a coin does not","blog.example","morrow"),
+      mk(5,"https://example.net/unverified-merger-rumor","Sources claim a merger that filings do not show","example.net","slate"),
+      mk(6,"https://docs.example/ostrom-commons-rules","Eight rules real commons use to govern themselves","docs.example","rill"),
+      mk(7,"https://example.com/sensitive-explicit-thread","A thread some flagged as not-safe-for-trails","example.com","fen"),
+      mk(8,"https://archive.example/memex-1945","As We May Think, in full","archive.example","morrow"),
+    ];
+
+    /* --- the APPEND-ONLY ledger. Every stone is a transfer (signal) or its
+           reversal (reclaim). Balance = sum(to) - sum(from). No mint path, so
+           the sum is structurally zero. --- */
+    this._eid = 0;
+    this.events = [];
+    const sig = (from,placeId,hoursAgo)=>{
+      const p = this.places.find(x=>x.id===placeId);
+      this.events.push({id:++this._eid,kind:"signal",from,to:p.sharedBy,placeId,qty:1,reverses:null,
+                        ts:Date.now()-hoursAgo*3600e3});
+    };
+    /* a believable history → gives places height and peers non-trivial balances */
+    sig("rill",1,5); sig("fen",1,4); sig("morrow",1,3); sig("slate",1,1);
+    sig("you",2,9);  sig("fen",2,8); sig("morrow",2,2);
+    sig("you",3,30); sig("rill",3,20); sig("slate",3,14); sig("morrow",3,10); sig("fen",3,6);
+    sig("rill",4,40); sig("you",4,12);
+    sig("morrow",6,26); sig("fen",6,18); sig("you",6,3);
+    sig("rill",8,50); sig("fen",8,33); sig("slate",8,22);
+
+    /* --- the self-drawing map: per-place tag readings, each a set of peers who
+           laid/affirmed it (breadth IS the weight). 'disputed' marks a counter. --- */
+    this.readings = {
+      1:[r("tech-leak",["you","fen","morrow","slate"]), r("apple-supply-chain",["you","fen"]), r("rumor",["slate"],true)],
+      2:[r("methodology",["rill","you","fen"]), r("primary-source",["rill"])],
+      3:[r("open-data",["fen","you","rill","morrow"]), r("civic",["fen","slate"])],
+      4:[r("economics",["morrow","rill"]), r("explainer",["morrow","you"])],
+      5:[r("rumor",["slate","fen"]), r("disputed",["you","rill"],true)],
+      6:[r("commons",["rill","you","fen","morrow"]), r("primary-source",["rill"])],
+      7:[r("discussion",["fen"])],
+      8:[r("primary-source",["morrow","you","rill","fen"]), r("history",["morrow"])],
+    };
+
+    /* --- flags: (place,peer,kind). Seeded so one place veils and one demotes,
+           to exercise redaction and the status-fold. --- */
+    this.flags = [];
+    this.flags.push({placeId:7,peer:"rill",kind:"nsfw"},{placeId:7,peer:"morrow",kind:"nsfw"}); // → veiled (≥2)
+    this.flags.push({placeId:5,peer:"you",kind:"misleading"},{placeId:5,peer:"rill",kind:"misleading"},{placeId:5,peer:"fen",kind:"misleading"}); // → demoted (≥3)
+    function mk(id,url,title,domain,sharedBy){return {id,url,title,domain,sharedBy};}
+    function r(tag,peers,disputed=false){return {tag,peers:new Set(peers),disputed};}
+  }
+
+  async init(){ return true; }
+  setReaderSafe(b){ this.readerSafe = b; }
+
+  /* --- DERIVATIONS (folds). These are the heart of "nothing derived is stored". --- */
+  _balance(peer){
+    let b=0; for(const e of this.events){ if(e.to===peer)b+=e.qty; if(e.from===peer)b-=e.qty; } return b;
+  }
+  _activeSignals(placeId){
+    // a signal is active if it has no reversing 'reclaim'
+    return this.events.filter(e=>e.kind==="signal" && e.placeId===placeId &&
+      !this.events.some(r=>r.reverses===e.id));
+  }
+  _stones(placeId){ return this._activeSignals(placeId).length; }
+  _breadth(placeId){ return new Set(this._activeSignals(placeId).map(e=>e.from)).size; }
+  _signaledByMe(placeId){
+    return this._activeSignals(placeId).some(e=>e.from===this.me);
+  }
+  _status(placeId){
+    // the flag status-fold, with fixed precedence: spam > nsfw > demote > open
+    const f=this.flags.filter(x=>x.placeId===placeId);
+    const c=k=>f.filter(x=>x.kind===k).length;
+    if(c("spam")>=4) return "hidden";
+    if(c("nsfw")>=2) return "veiled";
+    if(c("misleading")>=3 || c("duplicate")>=3) return "demoted";
+    return "open";
+  }
+  _rising(placeId){
+    // "rising": a meaningful share of this place's stones arrived in the last 24h
+    const act=this._activeSignals(placeId);
+    if(act.length<2) return false;
+    const recent=act.filter(e=>e.ts>Date.now()-24*3600e3).length;
+    return recent/act.length>=0.5;
+  }
+  /* event-age decay ranking (the spec's §6.1), "today" half-life */
+  _score(placeId){
+    return this._activeSignals(placeId).reduce((s,e)=>{
+      const ageH=(Date.now()-e.ts)/3600e3; return s+Math.pow(0.5, ageH/12);
+    },0);
+  }
+
+  _project(p){
+    const status=this._status(p.id);
+    const safeVeil = status==="veiled" && this.readerSafe;
+    return {
+      id:p.id, status,
+      url: safeVeil ? null : p.url,
+      title: safeVeil ? null : p.title,
+      domain: safeVeil ? null : p.domain,
+      redacted: safeVeil,
+      stones:this._stones(p.id), breadth:this._breadth(p.id), rising:this._rising(p.id),
+      tags:(this.readings[p.id]||[]).filter(r=>!r.disputed).map(r=>r.tag),
+      sharedByMe:p.sharedBy===this.me, signaledByMe:this._signaledByMe(p.id),
+    };
+  }
+
+  async getFeed({tags=[]}={}){
+    let rows=this.places.map(p=>this._project(p))
+      .filter(p=>p.status!=="hidden");                 // hidden excluded for everyone
+    if(tags.length) rows=rows.filter(p=>tags.every(t=>p.tags.includes(t)));
+    // ranking: status demotes, then event-age score
+    return rows.sort((a,b)=>{
+      const da=a.status==="demoted"?0.25:1, db=b.status==="demoted"?0.25:1;
+      return (this._score(b.id)*db)-(this._score(a.id)*da);
+    });
+  }
+  async getTrails(){
+    const map=new Map();
+    for(const p of this.places){
+      if(this._status(p.id)==="hidden") continue;
+      for(const r of (this.readings[p.id]||[])){
+        if(r.disputed) continue;
+        const cur=map.get(r.tag)||{tag:r.tag,count:0,rising:false};
+        cur.count+=1; if(this._rising(p.id)) cur.rising=true; map.set(r.tag,cur);
+      }
+    }
+    return [...map.values()].sort((a,b)=>b.count-a.count);
+  }
+  async getRising(){
+    return (await this.getFeed({})).filter(p=>p.rising)
+      .flatMap(p=>p.tags).reduce((acc,t)=>{const e=acc.find(x=>x.tag===t);e?e.score++:acc.push({tag:t,score:1});return acc;},[])
+      .sort((a,b)=>b.score-a.score).slice(0,5);
+  }
+  async getBalance(){ return this._balance(this.me); }
+
+  async getReadings(placeId){
+    return (this.readings[placeId]||[]).map(r=>({
+      tag:r.tag, weight:r.peers.size, disputed:r.disputed, mine:r.peers.has(this.me)
+    })).sort((a,b)=>b.weight-a.weight);
+  }
+
+  async leaveWaymark({url,title,tag}){
+    const id=Math.max(...this.places.map(p=>p.id))+1;
+    let domain="link"; try{ domain=new URL(url).hostname.replace(/^www\./,""); }catch(_){}
+    this.places.push({id,url,title:title||url,domain,sharedBy:this.me});
+    this.readings[id]= tag ? [{tag:slug(tag),peers:new Set([this.me]),disputed:false}] : [];
+    return id;
+  }
+
+  async addStone(placeId){
+    const p=this.places.find(x=>x.id===placeId);
+    if(p.sharedBy===this.me) throw err("CAIRN_SELF","you cannot signal your own waymark");
+    if(this._signaledByMe(placeId)) throw err("CAIRN_DUP","you already left a stone here");
+    if(this._balance(this.me)-1 < -10) throw err("CAIRN_FLOOR","you have spent your attention to the floor");
+    this.events.push({id:++this._eid,kind:"signal",from:this.me,to:p.sharedBy,placeId,qty:1,reverses:null,ts:Date.now()});
+    return {ok:true};
+  }
+  async reclaim(placeId){
+    const mine=this._activeSignals(placeId).find(e=>e.from===this.me);
+    if(!mine) return {ok:false};
+    const p=this.places.find(x=>x.id===placeId);
+    // a reclaim is a NEW reversing event — never an edit/delete (append-only)
+    this.events.push({id:++this._eid,kind:"reclaim",from:p.sharedBy,to:this.me,placeId,qty:1,reverses:mine.id,ts:Date.now()});
+    return {ok:true};
+  }
+  async layTag(placeId,tag){
+    const t=slug(tag); if(!t) return {ok:false};
+    const list=this.readings[placeId]||(this.readings[placeId]=[]);
+    let r=list.find(x=>x.tag===t);
+    if(r) r.peers.add(this.me); else list.push({tag:t,peers:new Set([this.me]),disputed:false});
+    return {ok:true};
+  }
+  async flag(placeId,kind){
+    const ex=this.flags.find(x=>x.placeId===placeId&&x.peer===this.me&&x.kind===kind);
+    if(ex) this.flags=this.flags.filter(x=>x!==ex);     // toggle off (demo affordance)
+    else this.flags.push({placeId,peer:this.me,kind});
+    return {ok:true};
+  }
+  async myFlags(placeId){ return this.flags.filter(x=>x.placeId===placeId&&x.peer===this.me).map(x=>x.kind); }
+}
+
+/* small helpers shared by the adapters */
+function slug(s){ return String(s).toLowerCase().replace(/[^a-z0-9-]+/g,"-").replace(/^-+|-+$/g,"").slice(0,32); }
+function err(code,msg){ const e=new Error(msg); e.code=code; return e; }
+
+/* ============================================================================
+   3 · ADAPTER B  ·  SupabaseStore  (PRODUCTION path)
+   ----------------------------------------------------------------------------
+   The real backend. Calls the exact rpc_* verbs and reads the `feed` view from
+   cairn-mvp-implementation-spec-v0.1.md. Activated when window.CAIRN_CONFIG is
+   present (set by client/config/config.js, which commits the publishable url +
+   anon key). supabase-js is imported lazily so the demo path stays dependency-
+   free and offline-capable.
+
+   NOTE ON REDACTION: safe-trails is enforced by the `feed` view at the database
+   edge; this client passes the reader's intent but does not — and must not —
+   re-implement the veil as the enforcement. The client veil is cosmetic.
+   ============================================================================ */
+class SupabaseStore {
+  constructor(cfg){ this.cfg=cfg; this.mode="live"; this.readerSafe=true; this.sb=null; this.me=null; }
+  async init(){
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    this.sb = createClient(this.cfg.url, this.cfg.anonKey);
+    const { data:{ session } } = await this.sb.auth.getSession();
+    if(!session) await this.sb.auth.signInAnonymously();    // every visitor a peer
+    await this.sb.rpc("ensure_peer");                       // map auth.uid → peer
+    return true;
+  }
+  setReaderSafe(b){ this.readerSafe=b; /* also call rpc_set_safe_mode if desired */
+    this.sb?.rpc("rpc_set_safe_mode",{ p_on:b }); }
+  async getFeed({tags=[]}={}){
+    let q=this.sb.from("feed").select("*");
+    if(tags.length) q=q.overlaps("tags",tags);
+    const { data, error } = await q; if(error) throw error;
+    // map the feed view's columns into the UI's place shape
+    return (data||[]).map(row=>({
+      id:row.id, url:row.url, title:row.title, domain:row.domain, status:row.status,
+      redacted: row.title===null, stones:row.stones, breadth:row.breadth, rising:false,
+      tags:row.tags||[], sharedByMe:false, signaledByMe:false,
+    }));
+  }
+  async getTrails(){ const { data } = await this.sb.from("trending_tags").select("*"); 
+    return (data||[]).map(t=>({tag:t.tag,count:Math.round(t.score),rising:false})); }
+  async getRising(){ const { data } = await this.sb.from("trending_tags").select("*").limit(5);
+    return (data||[]).map(t=>({tag:t.tag,score:Math.round(t.score)})); }
+  async getBalance(){ const { data } = await this.sb.from("my_balance").select("stones").single();
+    return data?.stones ?? 0; }
+  async getReadings(_){ return []; /* the weighted field is a Horizon feature server-side */ }
+  async leaveWaymark({url,title,tag}){ const { data, error } =
+    await this.sb.rpc("rpc_share",{ p_url:url, p_title:title, p_tags: tag?[slug(tag)]:[] });
+    if(error) throw error; return data; }
+  async addStone(placeId){ const { error } = await this.sb.rpc("rpc_signal",{ p_link:placeId });
+    if(error) throw mapPgError(error); return {ok:true}; }
+  async reclaim(placeId){ const { error } = await this.sb.rpc("rpc_reclaim_mine",{ p_link:placeId });
+    if(error) throw mapPgError(error); return {ok:true}; }
+  async layTag(placeId,tag){ const { error } = await this.sb.rpc("rpc_tag",
+    { p_link:placeId, p_tag:slug(tag) }); if(error) throw error; return {ok:true}; }
+  async flag(placeId,kind){ const { error } = await this.sb.rpc("rpc_flag",{ p_link:placeId, p_kind:kind });
+    if(error) throw error; return {ok:true}; }
+  async myFlags(_){ return []; }
+}
+function mapPgError(e){ const m=(e.message||""); const c=e.code||"";
+  return err(c||"CAIRN_ERR", m); }
+
+/* ============================================================================
+   4 · THE FACTORY  ·  pick the adapter, expose the mode
+   ----------------------------------------------------------------------------
+   In production, client/config/config.js does:
+       window.CAIRN_CONFIG = { url:"https://<ref>.supabase.co", anonKey:"<public-anon-key>" };
+   That file is committed; the anon key is publishable by design (security is the
+   RLS + verb layer, proven by the spec's tests). Absent that, we run the seeded
+   demo so the interface is never a dead connection error.
+   ============================================================================ */
+function createStore(){
+  const cfg = window.CAIRN_CONFIG;
+  if(cfg && cfg.url && cfg.anonKey) return new SupabaseStore(cfg);
+  return new LocalStore();
+}
+
+/* ============================================================================
+   5 · THE VIEW / CONTROLLER
+   ----------------------------------------------------------------------------
+   Renders from the store and wires interaction. Kept deliberately small and
+   legible; every handler reads the store, mutates through a verb, and re-renders.
+   ============================================================================ */
+const $ = s=>document.querySelector(s);
+const store = createStore();
+let state = { filter:[], selected:null };
+
+/* ---- color mode (session only; no localStorage) ---- */
+(function modeInit(){
+  const root=document.documentElement;
+  function apply(m){ root.setAttribute("data-mode",m);
+    $("#modeLabel").textContent=m; $("#modeIconUse").setAttribute("href", m==="dark"?"#i-moon":"#i-sun");
+    const tc=document.querySelector('meta[name="theme-color"]'); if(tc) tc.setAttribute("content", m==="dark"?"#0f0f0f":"#faf8f5"); }
+  apply(root.getAttribute("data-mode")||"dark");
+  window.matchMedia("(prefers-color-scheme: light)").addEventListener("change",e=>apply(e.matches?"light":"dark"));
+  $("#modeToggle").addEventListener("click",()=>apply(root.getAttribute("data-mode")==="dark"?"light":"dark"));
+})();
+
+/* ---- toast ---- */
+let toastT;
+function toast(msg,warn=false){ const el=$("#toast"); el.textContent=msg; el.className="toast show"+(warn?" warn":"");
+  clearTimeout(toastT); toastT=setTimeout(()=>el.className="toast",2200); }
+
+/* ---- render: the whole HUD ---- */
+async function renderAll(){
+  await Promise.all([renderBalance(), renderTrails(), renderRising(), renderMap()]);
+  if(state.selected!=null) renderDetail(state.selected);
+}
+async function renderBalance(){ $("#balance").textContent = await store.getBalance(); }
+
+async function renderTrails(){
+  const trails = await store.getTrails();
+  $("#filterNote").innerHTML = state.filter.length ? `trail · <b>#${state.filter.join(" #")}</b>` : "all trails";
+  $("#trails").innerHTML = trails.map(t=>{
+    const on = state.filter.includes(t.tag);
+    const w = Math.max(14, Math.min(64, t.count*12));
+    return `<button class="trail" data-tag="${t.tag}" aria-pressed="${on}">
+      <span class="nm">#${t.tag}</span>
+      <span class="heat" style="width:${w}px"></span>
+      <span class="ct">${t.count}${t.rising?' <span class="rising">▲</span>':''}</span>
+    </button>`;
+  }).join("");
+  $("#trails").querySelectorAll(".trail").forEach(b=>b.addEventListener("click",()=>{
+    const t=b.dataset.tag;
+    state.filter = state.filter.includes(t) ? state.filter.filter(x=>x!==t) : [t]; // single-trail filter (toggle)
+    renderTrails(); renderMap();
+  }));
+}
+
+async function renderRising(){
+  const rising = await store.getRising();
+  $("#rising").innerHTML = rising.length ? rising.map(r=>
+    `<div class="rise-item"><span class="mono">#${r.tag}</span> gathering passage</div>`).join("")
+    : `<div class="rise-item" style="color:var(--faint)">the trails are quiet</div>`;
+}
+
+async function renderMap(){
+  const places = await store.getFeed({ tags: state.filter });
+  $("#map").innerHTML = places.map(p=>cardHTML(p)).join("") ||
+    `<div class="detail-empty">No waymarks on this trail yet. Be the first to leave one.</div>`;
+  $("#map").querySelectorAll(".mark").forEach(el=>el.addEventListener("click",()=>select(+el.dataset.id)));
+}
+
+/* a waymark card; the stone-stack glyph height is drawn from the count */
+function cardHTML(p){
+  const h=Math.min(6, Math.max(1, Math.round(p.stones/2)));
+  const stack=Array.from({length:h},(_,i)=>`<i style="width:${10+i*4}px"></i>`).join("");
+  const title = p.redacted ? `<span class="redacted">covered · marked not safe for trails</span>` : esc(p.title);
+  const domain = p.redacted ? "—" : esc(p.domain);
+  const trails = p.redacted ? "" :
+    `<div class="trails">${(p.tags||[]).slice(0,4).map(t=>`<span class="ttag">#${esc(t)}</span>`).join("")}</div>`;
+  const flags=[]; if(p.status==="demoted") flags.push('<span class="chip warn"><span class="dot"></span>demoted</span>');
+  if(p.rising) flags.push('<span class="chip ok"><span class="dot"></span>rising</span>');
+  if(store.mode==="demo") {/* no per-card sim chip: the global demo chip carries it */}
+  return `<article class="mark ${p.redacted?'veiled':''}" data-id="${p.id}" aria-selected="${state.selected===p.id}" tabindex="0">
+    <div class="stack"><span class="h">${p.stones}</span>${stack}</div>
+    <div class="body">
+      <div class="ttl">${title}</div>
+      <div class="meta"><span>${domain}</span>${flags.join("")}</div>
+      ${trails}
+    </div>
+  </article>`;
+}
+
+/* ---- selection → the reading (right rail / bottom sheet) ---- */
+async function select(id){
+  state.selected=id;
+  $("#map").querySelectorAll(".mark").forEach(el=>el.setAttribute("aria-selected", (+el.dataset.id===id)));
+  await renderDetail(id);
+  if(window.matchMedia("(max-width:980px)").matches) $("#detail").classList.add("open");
+}
+
+async function renderDetail(id){
+  const place = (await store.getFeed({})).find(p=>p.id===id);
+  if(!place){ closeDetail(); return; }
+  $("#detailEmpty").style.display="none";
+  const body=$("#detailBody"); body.style.display="block";
+
+  const readings = await store.getReadings(id);
+  const maxW = Math.max(1, ...readings.map(r=>r.weight));
+  const myFlags = store.myFlags ? await store.myFlags(id) : [];
+
+  const titleHTML = place.redacted
+    ? `<div class="dt-ttl"><span class="redacted">Covered place</span></div>
+       <div class="dt-meta">Marked not safe for trails by peers. Turn off safe trails to view, if you are not a younger walker.</div>`
+    : `<div class="dt-ttl">${esc(place.title)}</div>
+       <div class="dt-meta">${esc(place.url)}</div>`;
+
+  const readingsHTML = readings.length ? readings.map(r=>`
+    <div class="reading ${r.disputed?'dis':''}">
+      <div class="top"><span class="nm">#${esc(r.tag)}${r.disputed?' · counter':''}</span>
+        <button class="affirm" data-tag="${esc(r.tag)}">${r.mine?'yours ✓':'+ stone'}</button></div>
+      <div class="bar"><i style="width:${Math.round(r.weight/maxW*100)}%"></i></div>
+      <div class="w">${r.weight} ${r.weight===1?'peer':'peers'}</div>
+    </div>`).join("") : `<div class="act-note">No readings yet. Lay the first trail below.</div>`;
+
+  body.innerHTML = `
+    ${titleHTML}
+    <div class="dt-h">The reading <span class="chip plain">${place.stones} stones · ${place.breadth} hands</span></div>
+    ${readingsHTML}
+    <div class="layrow">
+      <input id="layInput" placeholder="lay a trail (a tag)" autocomplete="off">
+      <button class="act primary" id="layBtn" style="flex:none"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+
+    <div class="dt-h">Your stone</div>
+    ${ place.sharedByMe
+        ? `<div class="act-note">This is your own waymark. You cannot add a stone to it; others judge it.</div>`
+        : `<div class="dt-actions">
+             <button class="act ${place.signaledByMe?'on':'primary'}" id="stoneBtn">
+               <svg viewBox="0 0 24 24"><ellipse cx="12" cy="17" rx="7" ry="2.4"/><ellipse cx="12" cy="12.5" rx="5" ry="2"/><ellipse cx="12" cy="8.5" rx="3.4" ry="1.7"/></svg>
+               ${place.signaledByMe?'reclaim your stone':'add your stone'}
+             </button>
+             <button class="act" id="followBtn"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg> follow out</button>
+           </div>
+           <div class="act-note">A stone is one unit of your attention, transferred to the peer who marked this. It is mutual credit, never minted, never cashed.</div>`
+    }
+
+    <div class="dt-h">Tend the trail</div>
+    <div class="act-note">Flagging is graduated care: enough concern covers a place, then lowers it, then removes it. One flag per kind.</div>
+    <div class="flags">
+      ${["nsfw","misleading","duplicate","spam"].map(k=>
+        `<button class="flagb" data-kind="${k}" aria-pressed="${myFlags.includes(k)}">${k}</button>`).join("")}
+    </div>
+  `;
+
+  /* wire the detail affordances */
+  body.querySelectorAll(".affirm").forEach(b=>b.addEventListener("click",async()=>{
+    await store.layTag(id, b.dataset.tag); toast("stone laid on #"+b.dataset.tag); renderDetail(id); renderTrails();
+  }));
+  $("#layBtn")?.addEventListener("click",async()=>{
+    const v=$("#layInput").value.trim(); if(!v) return;
+    await store.layTag(id,v); $("#layInput").value=""; toast("trail laid"); renderDetail(id); renderTrails(); renderMap();
+  });
+  $("#stoneBtn")?.addEventListener("click",async()=>{
+    try{
+      if(place.signaledByMe){ await store.reclaim(id); toast("stone reclaimed"); }
+      else { await store.addStone(id); toast("stone added"); }
+      await renderBalance(); await renderMap(); renderDetail(id);
+    }catch(e){ toast(e.message||"could not place stone", true); }
+  });
+  $("#followBtn")?.addEventListener("click",()=>{ if(place.url) window.open(place.url,"_blank","noopener"); });
+  body.querySelectorAll(".flagb").forEach(b=>b.addEventListener("click",async()=>{
+    await store.flag(id, b.dataset.kind); toast("care recorded"); await renderMap(); renderDetail(id);
+  }));
+}
+
+function closeDetail(){
+  state.selected=null; $("#detailBody").style.display="none"; $("#detailEmpty").style.display="block";
+  $("#detail").classList.remove("open");
+  $("#map").querySelectorAll(".mark").forEach(el=>el.setAttribute("aria-selected","false"));
+}
+$("#sheetClose").addEventListener("click",closeDetail);
+
+/* ---- safe-trails toggle (redraws; in prod also tells the backend) ---- */
+$("#safeToggle").addEventListener("click",async()=>{
+  const btn=$("#safeToggle"); const on=btn.getAttribute("aria-pressed")!=="true";
+  btn.setAttribute("aria-pressed",on); store.setReaderSafe(on);
+  toast(on?"safe trails on":"safe trails off — covered places shown");
+  await renderMap(); if(state.selected!=null) renderDetail(state.selected);
+});
+
+/* ---- leave a waymark (modal) ---- */
+const scrim=$("#scrim");
+$("#leaveBtn").addEventListener("click",()=>{ scrim.classList.add("open"); $("#fUrl").focus(); });
+$("#cancelBtn").addEventListener("click",()=>scrim.classList.remove("open"));
+scrim.addEventListener("click",e=>{ if(e.target===scrim) scrim.classList.remove("open"); });
+$("#placeBtn").addEventListener("click",async()=>{
+  const url=$("#fUrl").value.trim(), title=$("#fTitle").value.trim(), tag=$("#fTag").value.trim();
+  if(!url){ toast("a waymark needs a link", true); return; }
+  try{
+    const id=await store.leaveWaymark({url,title,tag});
+    scrim.classList.remove("open"); $("#fUrl").value=$("#fTitle").value=$("#fTag").value="";
+    state.filter=[]; toast("waymark left"); await renderAll(); select(id);
+  }catch(e){ toast(e.message||"could not place waymark", true); }
+});
+
+/* ---- mode chip reflects the active adapter (honest labeling) ---- */
+function reflectMode(){
+  const chip=$("#modeChip"), txt=$("#modeChipText");
+  if(store.mode==="live"){ chip.className="chip ok"; txt.textContent="live · connected"; }
+  else { chip.className="chip sim"; txt.textContent="demo · seeded"; }
+}
+
+/* ---- boot ---- */
+(async function boot(){
+  reflectMode();
+  try{ await store.init(); }
+  catch(e){ toast("backend unavailable — running demo", true); }
+  reflectMode();
+  await renderAll();
+})();
+</script>
+</body>
+</html>

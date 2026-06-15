@@ -1,0 +1,24 @@
+Cairn
+Copyright (C) 2026 Techne (RegenHub LCA) and the Cairn contributors
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+--------------------------------------------------------------------------------
+STATUS: PROPOSED. The choice of AGPL-3.0-or-later is a proposed default and is
+not yet ratified by the cooperative's membership. Before first public release,
+replace this file with the full, canonical license text, available at:
+
+    https://www.gnu.org/licenses/agpl-3.0.txt
+
+The AGPL is chosen for intent: a networked commons should remain a commons, so
+that anyone who runs a modified Cairn as a service must share their changes.
+--------------------------------------------------------------------------------

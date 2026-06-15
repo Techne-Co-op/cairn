@@ -1,0 +1,19 @@
+# the live client config carries your project's keys (publishable, but kept out
+# of version control by default; commit config.js deliberately if you prefer)
+client/config/config.js
+
+# supabase CLI
+supabase/.branches
+supabase/.temp
+.env
+.env.*
+
+# os / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# node (only if tooling is added later)
+node_modules/
