@@ -1,6 +1,3 @@
-# the live client config carries your project's keys (publishable, but kept out
-# of version control by default; commit config.js deliberately if you prefer)
-client/config/config.js
 
 # supabase CLI
 supabase/.branches

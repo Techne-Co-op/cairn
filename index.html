@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en" data-mode="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0f0f0f">
+<title>Cairn · an introduction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+(function(){try{ if (window.matchMedia('(prefers-color-scheme: light)').matches)
+  document.documentElement.setAttribute('data-mode','light'); }catch(e){}})();
+</script>
+<style>
+/* CAIRN · introduction · co-op.us design system, tarn sibling accent */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface-raised:#232220;
+  --border:#333333; --border-strong:#4a4a4a;
+  --tarn:#6fb0a8; --tarn-text:#6fb0a8;
+  --tarn-dim:rgba(111,176,168,.12); --tarn-glow:rgba(111,176,168,.06);
+  --heading:#e8e0d8; --text:#d4d4d4; --muted:#999999; --faint:#666666;
+  --ok:#94ae84; --ok-dim:rgba(148,174,132,.14);
+  --info:#8da3b5; --info-dim:rgba(141,163,181,.14);
+  --warn:#c0705c; --warn-dim:rgba(192,112,92,.14);
+  --shadow-1:none; --shadow-2:none;
+  --dur-mode:400ms; --dur-micro:160ms; --ease:cubic-bezier(.4,0,.2,1);
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+  --serif:'Libre Baskerville',Georgia,serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+[data-mode="light"]{
+  color-scheme:light;
+  --bg:#faf8f5; --surface:#ffffff; --surface-raised:#ffffff;
+  --border:#e2ddd5; --border-strong:#c9c2b8;
+  --tarn:#6fb0a8; --tarn-text:#3f7a72;
+  --tarn-dim:rgba(111,176,168,.16); --tarn-glow:rgba(111,176,168,.08);
+  --heading:#2a2520; --text:#3d3833; --muted:#6e675f; --faint:#a39b90;
+  --ok:#5f7a52; --ok-dim:rgba(95,122,82,.12);
+  --info:#5b7286; --info-dim:rgba(91,114,134,.12);
+  --warn:#9e4f3d; --warn-dim:rgba(158,79,61,.12);
+  --shadow-1:0 1px 3px rgba(42,37,32,.08); --shadow-2:0 4px 16px rgba(42,37,32,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--serif);font-size:16.5px;line-height:1.78;color:var(--text);background:var(--bg);
+  min-height:100vh;-webkit-font-smoothing:antialiased;
+  transition:background-color var(--dur-mode) var(--ease),color var(--dur-mode) var(--ease)}
+.page{max-width:720px;margin:0 auto;padding:var(--s7) var(--s5) var(--s8)}
+a{color:var(--tarn-text);text-decoration:none}
+em{color:var(--heading);font-style:italic}
+::selection{background:var(--tarn-dim)}
+:focus-visible{outline:2px solid var(--tarn);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:0ms!important;animation:none!important}}
+
+header.mast{margin-bottom:var(--s7)}
+.toprow{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s4)}
+.brand{display:flex;align-items:center;gap:12px}
+.glyph{width:38px;height:38px;color:var(--tarn);flex:none;stroke-width:1.5;fill:none;stroke:currentColor}
+.brandname{font-family:var(--serif);font-weight:700;font-size:30px;color:var(--heading);letter-spacing:-.01em}
+.mode-toggle{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 12px;border:1px solid var(--border);
+  border-radius:999px;background:var(--surface);font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;flex:none;
+  transition:border-color var(--dur-micro) var(--ease),background-color var(--dur-mode) var(--ease)}
+.mode-toggle svg{width:14px;height:14px;stroke:var(--tarn-text);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.mode-toggle:hover{border-color:var(--border-strong)}
+.hero-line{font-family:var(--serif);font-weight:700;color:var(--heading);
+  font-size:clamp(30px,5.4vw,46px);line-height:1.12;letter-spacing:-.015em;margin:var(--s6) 0 var(--s3)}
+.hero-sub{font-style:italic;font-size:18px;color:var(--muted);line-height:1.6;max-width:50ch}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:var(--s5)}
+.schip{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;display:inline-flex;align-items:center;gap:6px;
+  padding:3px 10px;border-radius:999px;white-space:nowrap}
+.schip .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.schip.sim{color:var(--info);background:var(--info-dim)}
+.schip.plain{color:var(--muted);background:var(--surface);border:1px solid var(--border)}
+
+section{margin-top:var(--s7)}
+.label{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--tarn-text)}
+.rule{height:1px;background:var(--border);margin:var(--s2) 0 var(--s4)}
+h2{font-size:25px;font-weight:700;color:var(--heading);line-height:1.32;margin-bottom:var(--s4)}
+p{margin-bottom:var(--s4);max-width:64ch}
+.lede{font-size:18px;color:var(--text);line-height:1.7}
+.mono{font-family:var(--mono)}
+.t{font-family:var(--mono);font-size:.86em;color:var(--tarn-text)}
+
+.figure{margin:var(--s6) 0}
+.figure svg{display:block;width:100%;height:auto}
+.figure.wide{margin-left:calc(50% - min(450px,50vw - 16px));width:min(900px,calc(100vw - 32px))}
+.figcap{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:var(--s2);letter-spacing:.04em;line-height:1.7}
+.figcap b{color:var(--muted);font-weight:500}
+
+.sv-lab{font-family:var(--mono);font-size:10px;fill:var(--muted);letter-spacing:.03em}
+.sv-lab2{font-family:var(--mono);font-size:9px;fill:var(--faint);letter-spacing:.03em}
+.sv-ital{font-family:var(--serif);font-style:italic;font-size:12px;fill:var(--text)}
+.sv-head{font-family:var(--mono);font-size:10px;fill:var(--tarn-text);letter-spacing:.1em}
+.sv-line{stroke:var(--border-strong);stroke-width:1.4;fill:none}
+.sv-leader{stroke:var(--border);stroke-width:1;fill:none}
+.sv-tarnln{stroke:var(--tarn);stroke-width:2;fill:none}
+.sv-warnln{stroke:var(--warn);stroke-width:1.6;fill:none}
+.sv-card{fill:var(--surface);stroke:var(--border);stroke-width:1}
+.sv-dim{fill:var(--tarn-dim)}
+.sv-stone{fill:var(--tarn)}
+.sv-warnfill{fill:var(--warn)} .sv-mutedfill{fill:var(--muted)}
+svg *{transition:fill var(--dur-mode) var(--ease),stroke var(--dur-mode) var(--ease)}
+
+.feature-panel{border:1px solid var(--tarn);border-radius:12px;padding:var(--s4) var(--s5);
+  background:linear-gradient(135deg,var(--surface),var(--tarn-glow));margin:var(--s5) 0;box-shadow:var(--shadow-1)}
+.feature-panel p{margin-bottom:0;font-size:15px}
+.feature-panel .label{margin-bottom:var(--s2);display:block}
+
+.lineage{margin:var(--s5) 0;border-top:1px solid var(--border)}
+.lin{display:grid;grid-template-columns:140px 1fr;gap:var(--s4);padding:var(--s3) 0;border-bottom:1px solid var(--border)}
+.lin .who{font-family:var(--mono);font-size:11.5px;color:var(--tarn-text);padding-top:2px}
+.lin .what{font-size:13.5px;color:var(--text);line-height:1.6}
+.lin .what em{color:var(--heading)}
+@media (max-width:560px){.lin{grid-template-columns:1fr;gap:4px}}
+
+.standing{border:1px solid var(--border);border-left:2px solid var(--tarn);border-radius:10px;
+  padding:var(--s4) var(--s5);background:var(--surface);margin:var(--s5) 0}
+.standing p{margin-bottom:var(--s3)} .standing p:last-child{margin-bottom:0}
+.standing .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:var(--s2)}
+
+footer{font-family:var(--mono);font-size:11.5px;color:var(--faint);border-top:1px solid var(--border);
+  margin-top:var(--s8);padding-top:var(--s5);text-align:center;line-height:2}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="mast">
+  <div class="toprow">
+    <div class="brand">
+      <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">
+        <ellipse cx="12" cy="18.6" rx="7.4" ry="2.5"/><ellipse cx="12" cy="13.6" rx="5.3" ry="2.1"/>
+        <ellipse cx="12" cy="9.2" rx="3.7" ry="1.8"/><ellipse cx="12" cy="5.6" rx="2.2" ry="1.3"/>
+      </svg>
+      <span class="brandname">Cairn</span>
+    </div>
+    <button class="mode-toggle" id="modeToggle" aria-label="Toggle color mode">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use id="modeIconUse" href="#i-moon"/></svg>
+      <span id="modeLabel">dark</span>
+    </button>
+  </div>
+
+  <div class="hero-line">A commons for making sense of the web, together.</div>
+  <div class="hero-sub">Peers share what is worth attention, and stack their judgment in the open. What a thing is, and whether it can be trusted, is built by the many rather than decided by the few.</div>
+  <div class="chips">
+    <span class="schip sim"><span class="dot"></span>an introduction · a concept with a working prototype</span>
+    <span class="schip plain">no prior knowledge assumed</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></symbol>
+</defs></svg>
+
+<!-- 01 · THE ABSENCE -->
+<section>
+  <div class="label">01 · The absence</div>
+  <div class="rule"></div>
+  <h2>There is nowhere to make sense of the web in common.</h2>
+  <p class="lede">Every day, billions of links pass between people. We send each other articles, videos, papers, and the strange new artifacts that machines now produce. And almost nowhere does this passing-along gather into something a community can see and trust.</p>
+  <p>Links move through feeds built to hold attention rather than to reward what deserves it. They move through private messages that vanish, and through platforms that decide on our behalf what rises and what sinks. What a thing <em>is</em>, whether it is worth your time, whether it is even true, tends to be one of three things: left unsaid, imposed from above by a platform's ranking, or quietly gamed by whoever has the most to gain. None of these is a commons. None of them belongs to the people doing the reading.</p>
+  <p>This absence grows more serious as machines learn to generate endless plausible material. When anything can be produced, the scarce and valuable act is no longer making content but <em>judging</em> it: deciding, together and in the open, what merits attention and what a thing actually is. That judgment is exactly what the current web has no shared, trustworthy, commonly owned place to do. Cairn is a proposal for that place.</p>
+</section>
+
+<!-- 02 · THE GESTURE -->
+<section>
+  <div class="label">02 · The gesture</div>
+  <div class="rule"></div>
+  <h2>Stones, stacked by many hands.</h2>
+  <p>On a mountain trail, where no path is marked, hikers leave a small pile of stones to show the way. It is called a cairn. No one owns it. No one edits it. Each stone is one person, having walked the ground, quietly adding their agreement that <em>this way matters</em>. The next walker reads the height of the pile and trusts the many who came before.</p>
+  <p>Cairn brings that gesture to the web. A peer shares a link. Other peers who find it worth attention add a stone. The pile grows, or it does not, and its height is a signal no single voice could fake: the accumulated judgment of many hands. Alongside the stones, peers lay <span class="t">#tags</span>, the trails that show where collective attention is moving, so that a reader can follow not just what is high but what is rising, and along which line of interest.</p>
+
+  <figure class="figure" role="img" aria-label="A cairn of stacked stones, annotated: each stone a peer's signal, the height the trail's pull, the pile weathering with time">
+    <svg viewBox="0 0 640 230">
+      <ellipse class="sv-stone" cx="195" cy="190" rx="86" ry="20"/>
+      <ellipse class="sv-stone" cx="195" cy="151" rx="63" ry="17" opacity=".9"/>
+      <ellipse class="sv-stone" cx="195" cy="118" rx="46" ry="14" opacity=".8"/>
+      <ellipse class="sv-stone" cx="195" cy="91"  rx="31" ry="11" opacity=".7"/>
+      <ellipse class="sv-stone" cx="195" cy="70"  rx="19" ry="8"  opacity=".6"/>
+      <path class="sv-leader" d="M228 70 H330"/>
+      <text class="sv-lab" x="340" y="73">each stone is one peer&#8217;s judgment</text>
+      <path class="sv-leader" d="M258 130 H330"/>
+      <text class="sv-lab" x="340" y="126">the height is the trail&#8217;s pull,</text>
+      <text class="sv-lab" x="340" y="140">the same for every reader</text>
+      <path class="sv-leader" d="M281 190 H330"/>
+      <text class="sv-lab" x="340" y="186">stones weather with time, so the pile</text>
+      <text class="sv-lab" x="340" y="200">shows what matters now, not forever</text>
+    </svg>
+    <div class="figcap"><b>fig. 01</b> · the gesture. everything that follows is a version of this picture.</div>
+  </figure>
+
+  <p>So far this is simple, and on purpose. The depth of Cairn is in two turns it takes from here. The first concerns who decides what a thing means. The second concerns what a stone actually is.</p>
+</section>
+
+<!-- 03 · MEANING BUILT BY PEERS -->
+<section>
+  <div class="label">02 · The first turn</div>
+  <div class="rule"></div>
+  <h2>Meaning is built by peers, not stuck on.</h2>
+  <p>On most platforms a tag is a label. Someone types <span class="t">#tech-leak</span> and it sits there, a flat fact, the same whether one person or ten thousand agreed. Cairn treats a tag as something larger: a <em>claim</em> a peer makes and stands behind, which the rest of the network is then free to confirm, sharpen, qualify, or contest.</p>
+  <p>So when a peer asserts that a link is a tech leak, others who encounter it can agree, adding their weight. They can refine, proposing that it is more precisely a supply-chain leak. They can qualify, noting that it sits behind a paywall. Or they can contest, arguing that it is only a rumor. Each of these moves carries weight, and the distribution of that weight across the competing claims <em>is</em> the network's judgment. A reader arriving at the link does not see a single imposed label. They see a living field of where the community has reached agreement and where it is still arguing.</p>
+
+  <figure class="figure wide" role="img" aria-label="A central link surrounded by competing tag-claims of different weights: tech-leak affirmed strongly, apple-supply-chain refining, rumor contested, paywalled qualifying">
+    <svg viewBox="0 0 900 300">
+      <rect class="sv-card" x="372" y="118" rx="10" width="156" height="64"/>
+      <text class="sv-head" x="450" y="146" text-anchor="middle">a link</text>
+      <text class="sv-lab2" x="450" y="164" text-anchor="middle">shared just now</text>
+
+      <!-- tech-leak: strong, affirmed -->
+      <path class="sv-tarnln" d="M372 132 C 300 100, 230 80, 170 70" stroke-width="3"/>
+      <rect class="sv-dim" x="40" y="46" rx="13" width="146" height="34" stroke="var(--tarn)" stroke-width="1"/>
+      <text class="sv-head" x="58" y="68">#tech-leak</text><text class="sv-lab2" x="172" y="68" text-anchor="end">42</text>
+
+      <!-- apple-supply-chain: refining -->
+      <path class="sv-tarnln" d="M372 150 C 290 160, 220 175, 150 188" stroke-width="2"/>
+      <rect class="sv-card" x="34" y="172" rx="13" width="180" height="32"/>
+      <text class="sv-lab" x="52" y="192" fill="var(--tarn-text)">#apple-supply-chain</text>
+      <text class="sv-lab2" x="240" y="192" text-anchor="middle">narrows it</text>
+
+      <!-- paywalled: qualifies -->
+      <path class="sv-leader" d="M528 150 C 610 160, 680 174, 748 186"/>
+      <rect class="sv-card" x="700" y="170" rx="13" width="128" height="32"/>
+      <text class="sv-lab" x="718" y="190">#paywalled</text>
+      <text class="sv-lab2" x="660" y="160" text-anchor="middle">qualifies it</text>
+
+      <!-- rumor: contested, weak -->
+      <path class="sv-warnln" d="M528 134 C 610 104, 690 84, 758 72" stroke-dasharray="5 4"/>
+      <rect class="sv-card" x="724" y="48" rx="13" width="104" height="32" stroke="var(--warn)"/>
+      <text class="sv-lab" x="742" y="68" fill="var(--warn)">#rumor</text><text class="sv-lab2" x="690" y="64" text-anchor="middle">contested · 3</text>
+
+      <text class="sv-ital" x="450" y="252" text-anchor="middle">meaning is not a label stuck on; it is a field of weighted peer judgment</text>
+      <text class="sv-ital" x="450" y="272" text-anchor="middle">that shifts as the network learns</text>
+    </svg>
+    <div class="figcap"><b>fig. 02</b> · the first turn. the thick lines are settled judgment, the dashed line a minority view that has not (yet) carried. nothing is erased; the argument stays visible.</div>
+  </figure>
+
+  <p>Two consequences matter. Because nothing is deleted, a minority reading survives in the record, so that a confident crowd which turns out to be wrong can be corrected later by the dissent it once overruled. And because the field is always open, the meaning of a link is never finished: if a story is later debunked, fresh weight can move the judgment, and the confidence that was high will fall. The metadata is alive. Over many links and much time, this is how a shared vocabulary grows: not designed by a committee, but precipitated from use, the words the community has actually invested its judgment in rising to become the language everyone shares.</p>
+</section>
+
+<!-- 04 · THE UNIT -->
+<section>
+  <div class="label">02 · The second turn</div>
+  <div class="rule"></div>
+  <h2>The unit of judgment is attention, not money.</h2>
+  <p>If peers are placing stones, and stones carry weight, it is fair to ask what a stone is. The easy answer would be a tiny coin, a fraction of a cent. Cairn takes a more careful path, and borrows it from an old and well-understood instrument: the postage stamp.</p>
+  <p>A stamp is strange, if you look closely. It is not money. You cannot spend it at the grocer, and its worth does not rise and fall with markets. A stamp is a <em>prepaid promise of a service</em>: one letter carried. A forever stamp mails one letter today and one letter a decade from now, no matter what the price of postage has done in between, because its value was never a price. Its value is the work it commands. <em>Stable value comes from stable utility.</em></p>
+
+  <figure class="figure wide" role="img" aria-label="A coin whose value fluctuates on a jagged line, beside a stone whose value is a flat line pinned to one unit of attention">
+    <svg viewBox="0 0 900 250">
+      <text class="sv-head" x="210" y="40" text-anchor="middle">a coin</text>
+      <circle cx="210" cy="100" r="34" class="sv-card"/>
+      <text class="sv-mutedfill" x="210" y="106" text-anchor="middle" style="font-family:var(--mono);font-size:20px">$</text>
+      <path class="sv-warnln" d="M120 180 L150 160 L180 188 L210 150 L240 192 L270 158 L300 178"/>
+      <text class="sv-lab2" x="210" y="216" text-anchor="middle">worth whatever the market says,</text>
+      <text class="sv-lab2" x="210" y="230" text-anchor="middle">moment to moment</text>
+
+      <path class="sv-leader" d="M450 60 V200" stroke-dasharray="3 5"/>
+
+      <text class="sv-head" x="690" y="40" text-anchor="middle">a stone</text>
+      <ellipse class="sv-stone" cx="690" cy="112" rx="34" ry="11"/>
+      <ellipse class="sv-stone" cx="690" cy="98" rx="25" ry="9" opacity=".85"/>
+      <ellipse class="sv-stone" cx="690" cy="86" rx="16" ry="7" opacity=".7"/>
+      <path class="sv-tarnln" d="M600 175 H780"/>
+      <text class="sv-lab2" x="690" y="200" text-anchor="middle">worth one unit of attention,</text>
+      <text class="sv-lab2" x="690" y="214" text-anchor="middle">today and always</text>
+      <defs></defs>
+    </svg>
+    <div class="figcap"><b>fig. 03</b> · the second turn. a coin&#8217;s worth floats; a stone&#8217;s worth is pinned to the service it represents. the flat line is the point.</div>
+  </figure>
+
+  <p>A stone in Cairn is a stamp of this kind. It is one unit of the commons' real work, which for a place built to make sense of the web is <em>attention</em>: a unit of evaluation rendered, a measure of judgment given. You earn stones by doing that work, by sharing and assessing and curating, and you spend them by drawing on the commons' attention in turn. The supply is not minted from nothing and it is not bought with wealth; it is mutual credit, issued between peers and held in common, the way neighbors have kept reciprocal accounts for centuries. Its worth is anchored not to a dollar but to a service the commons can actually perform, which means it neither inflates nor invites speculation.</p>
+
+  <div class="feature-panel">
+    <span class="label">Why this matters</span>
+    <p>When meaning is built by peers, the question becomes what currency that building runs on. If it runs on money, the wealthy name the world. If it runs on attention, the <em>engaged</em> name it, and the cost of an opinion is a unit of one's own care rather than one's bank balance. Pricing judgment in attention rather than dollars is what keeps a sensemaking commons a commons.</p>
+  </div>
+</section>
+
+<!-- 05 · CARE AND LEGIBILITY -->
+<section>
+  <div class="label">03 · What holds it together</div>
+  <div class="rule"></div>
+  <h2>Care travels with it, and the rules are in plain sight.</h2>
+  <p>A commons without tending decays, so Cairn carries care as a first-class act. Peers can flag what should be handled differently, and the response is <em>graduated</em>: a first concern covers a sensitive link, a stronger one lowers it, and only the heaviest removes it. Sensitive material is hidden by default, so that younger readers walk only marked trails. Crucially, none of this is decided by a hidden algorithm or a distant moderator. The thresholds that govern it are published where they apply, and they belong to the community to change. This follows a long line of research, most associated with Elinor Ostrom, into how real commons govern themselves: clear boundaries, rules the participants can see, and sanctions that escalate by degree rather than fall all at once.</p>
+  <p>The same commitment to legibility runs through everything. There is no personalized feed: every reader with the same filters sees the same field, so a classroom can look at one screen together and a community can argue about a shared picture rather than ten thousand private ones. And there is no machinery of capture: no infinite scroll, no streaks, no notifications pulling you back. A good visit to Cairn is a short one. You arrive, you find what is worth your time, and you leave through it to read. Leaving is the point.</p>
+</section>
+
+<!-- 06 · LINEAGE -->
+<section>
+  <div class="label">04 · A lineage, not a novelty</div>
+  <div class="rule"></div>
+  <h2>Old ideas, newly joined.</h2>
+  <p>None of the parts of Cairn are invented from nothing. Its interest is in the joining, and it stands in a real tradition of people who believed tools could help us think together rather than merely consume.</p>
+  <div class="lineage">
+    <div class="lin"><div class="who">Vannevar Bush</div><div class="what">In 1945 imagined the <em>memex</em>, a machine for building and sharing <em>trails</em> of association through knowledge. Cairn's tags are those trails, laid in common.</div></div>
+    <div class="lin"><div class="who">Douglas Engelbart</div><div class="what">Spent his life on the <em>augmentation</em> of human intellect: tools that raise a group's collective capability, not ones that replace its thinking. A commons for shared judgment is squarely in that aim.</div></div>
+    <div class="lin"><div class="who">The postal service</div><div class="what">Showed that reliable, universal, affordable communication can be <em>infrastructure</em> rather than a product, and that a prepaid stamp can hold stable value by promising a service rather than a price.</div></div>
+    <div class="lin"><div class="who">Elinor Ostrom</div><div class="what">Demonstrated that commons are not doomed to ruin; communities govern shared resources well when the rules are visible, the boundaries clear, and the sanctions graduated.</div></div>
+    <div class="lin"><div class="who">Mutual credit</div><div class="what">A centuries-old practice, from local exchange networks to contemporary cooperatives, in which credit is issued between members rather than borrowed from a bank, and value is a record of mutual recognition rather than a scarce coin.</div></div>
+  </div>
+  <p>Cairn grows from a working cooperative rather than a startup, which is why these ideas are load-bearing in it rather than decorative. The commons is not a marketing frame; it is the actual structure, and the stone economy is an extension of how that cooperative already accounts for the contributions of its members.</p>
+</section>
+
+<!-- 07 · THE HORIZON -->
+<section>
+  <div class="label">05 · What it could become</div>
+  <div class="rule"></div>
+  <h2>Not one place, but many, connected.</h2>
+  <p>The deepest reason to call Cairn a <em>platform</em> rather than a website is that it is not meant to be a single destination owned by anyone. A school, a watershed group, a field of researchers, a neighborhood, each could run its own Cairn: its own commons, its own vocabulary, its own stones earned and spent locally. What joins them is not a central server and not a shared global coin, but the same arrangement the postal services have used for over a century to carry a letter across borders without a world currency: published terms, and <em>bilateral clearing</em> between independent members. A unit of judgment earned in one commons can be honored in another by agreement, node to node.</p>
+
+  <figure class="figure wide" role="img" aria-label="Several independent cairn nodes connected by bilateral clearing lines, with no central hub">
+    <svg viewBox="0 0 900 230">
+      <g>
+        <g transform="translate(110,60)"><ellipse class="sv-stone" cx="0" cy="22" rx="20" ry="6"/><ellipse class="sv-stone" cx="0" cy="13" rx="14" ry="5" opacity=".85"/><ellipse class="sv-stone" cx="0" cy="6" rx="8" ry="4" opacity=".7"/></g>
+        <text class="sv-lab2" x="110" y="108" text-anchor="middle">a school</text>
+      </g>
+      <g>
+        <g transform="translate(420,40)"><ellipse class="sv-stone" cx="0" cy="22" rx="20" ry="6"/><ellipse class="sv-stone" cx="0" cy="13" rx="14" ry="5" opacity=".85"/><ellipse class="sv-stone" cx="0" cy="6" rx="8" ry="4" opacity=".7"/></g>
+        <text class="sv-lab2" x="420" y="88" text-anchor="middle">a watershed group</text>
+      </g>
+      <g>
+        <g transform="translate(740,72)"><ellipse class="sv-stone" cx="0" cy="22" rx="20" ry="6"/><ellipse class="sv-stone" cx="0" cy="13" rx="14" ry="5" opacity=".85"/><ellipse class="sv-stone" cx="0" cy="6" rx="8" ry="4" opacity=".7"/></g>
+        <text class="sv-lab2" x="740" y="120" text-anchor="middle">a field of researchers</text>
+      </g>
+      <g>
+        <g transform="translate(250,168)"><ellipse class="sv-stone" cx="0" cy="22" rx="20" ry="6"/><ellipse class="sv-stone" cx="0" cy="13" rx="14" ry="5" opacity=".85"/><ellipse class="sv-stone" cx="0" cy="6" rx="8" ry="4" opacity=".7"/></g>
+        <text class="sv-lab2" x="250" y="214" text-anchor="middle">a neighborhood</text>
+      </g>
+      <g>
+        <g transform="translate(620,180)"><ellipse class="sv-stone" cx="0" cy="22" rx="20" ry="6"/><ellipse class="sv-stone" cx="0" cy="13" rx="14" ry="5" opacity=".85"/><ellipse class="sv-stone" cx="0" cy="6" rx="8" ry="4" opacity=".7"/></g>
+        <text class="sv-lab2" x="620" y="214" text-anchor="middle">a reading circle</text>
+      </g>
+      <g stroke-dasharray="5 5">
+        <path class="sv-tarnln" d="M138 78 L398 56"/>
+        <path class="sv-tarnln" d="M442 62 L718 84"/>
+        <path class="sv-tarnln" d="M120 88 L242 168"/>
+        <path class="sv-tarnln" d="M420 70 L628 178"/>
+        <path class="sv-tarnln" d="M278 176 L600 186"/>
+        <path class="sv-tarnln" d="M640 168 L730 96"/>
+      </g>
+      <text class="sv-ital" x="450" y="20" text-anchor="middle">each commons stands alone; the value grows with every connection</text>
+    </svg>
+    <div class="figcap"><b>fig. 04</b> · the horizon. no center, no shared coin. independent commons, clearing bilaterally, in the manner of the postal union.</div>
+  </figure>
+
+  <p>What this could amount to, in time, is a piece of civic infrastructure for collective intelligence: a way for communities to make sense of the world together, owning that work in common, with no platform standing between them and harvesting the attention they spend. That is the theory Cairn exists to test.</p>
+</section>
+
+<!-- 08 · STANDING -->
+<section>
+  <div class="label">06 · Where it stands</div>
+  <div class="rule"></div>
+  <h2>An honest account of what this is.</h2>
+  <div class="standing">
+    <p>Cairn is, today, a <em>concept with a working prototype</em>. The gesture is real and you can touch it: stones, tags, the live field, the graduated care. The economy described here, stones as a service credit pinned to attention, and the conviction field in which peers build meaning, are a worked design under active review, not a launched product. Every number in the model is a proposal awaiting the judgment of the people who will govern it, and the parts of the design that touch law are being reviewed by counsel before anything is built on them.</p>
+    <p>This is not a weakness of the introduction; it is the introduction being honest, which is the same honesty the platform itself is built to keep. Throughout Cairn, small marks name the condition of things, always a word beside the color, never the color alone, so that reading the system is reading its candor.</p>
+    <div class="legend">
+      <span class="schip sim"><span class="dot"></span>proposed · in review</span>
+      <span class="schip plain">prototype</span>
+    </div>
+    <p style="margin-top:var(--s3)">If the idea moves you, the right response is not to sign up for anything. It is to think along: to ask whether a commons for judgment, run on attention and held in common, is a thing the web is missing, and whether it could be made to work. That question is the invitation.</p>
+  </div>
+</section>
+
+<footer>
+  Cairn · a commons for collective sensemaking · drawn in the co-op.us design system · 2026<br>
+  an introduction to a concept · a working prototype stands behind it · nothing here is yet in force
+</footer>
+
+</div>
+<script>
+(function(){
+  var root=document.documentElement;
+  function apply(m){
+    root.setAttribute('data-mode',m);
+    document.getElementById('modeLabel').textContent=m;
+    document.getElementById('modeIconUse').setAttribute('href', m==='dark'?'#i-moon':'#i-sun');
+    var tc=document.querySelector('meta[name="theme-color"]'); if(tc) tc.setAttribute('content', m==='dark'?'#0f0f0f':'#faf8f5');
+  }
+  apply(root.getAttribute('data-mode')||'dark');
+  window.matchMedia('(prefers-color-scheme: light)').addEventListener('change',function(e){apply(e.matches?'light':'dark');});
+  document.getElementById('modeToggle').addEventListener('click',function(){apply(root.getAttribute('data-mode')==='dark'?'light':'dark');});
+})();
+</script>
+</body>
+</html>

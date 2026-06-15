@@ -3,6 +3,9 @@
 Way-finding for the open web. A commons where peers leave waymarks and the map
 of what is worth attention draws itself from the many who walked before.
 
+
+**Live:** https://techne-co-op.github.io/cairn/
+
 This repository is the MVP: a static client served from GitHub Pages over a
 Supabase Postgres backend. It is an *alpha*, not a public launch; see
 [Going public](#going-public) for what gates that.
